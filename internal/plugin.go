@@ -44,6 +44,12 @@ func (p *Plugin) Subscribe(subject string, handler func([]byte)) error {
 	return p.module.Subscribe(subject, handler)
 }
 
+// SubscribeWithSubject creates a non-durable subscription that delivers both
+// the full NATS subject and the message payload to the handler.
+func (p *Plugin) SubscribeWithSubject(subject string, handler func(subject string, data []byte)) error {
+	return p.module.SubscribeWithSubject(subject, handler)
+}
+
 // SubscribeDurable creates a durable JetStream subscription.
 func (p *Plugin) SubscribeDurable(subject, consumerName string, handler func([]byte)) error {
 	return p.module.SubscribeDurable(subject, consumerName, handler)

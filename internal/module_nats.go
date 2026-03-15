@@ -146,6 +146,28 @@ func (m *NATSModule) Subscribe(subject string, handler func([]byte)) error {
 	return nil
 }
 
+// SubscribeWithSubject creates a non-durable core NATS subscription that
+// delivers both the full subject and the message payload to the handler.
+// This is needed for wildcard subscriptions where the subject suffix carries
+// routing metadata (e.g. the connection ID in NodeRelay subjects).
+func (m *NATSModule) SubscribeWithSubject(subject string, handler func(subject string, data []byte)) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.nc == nil {
+		return fmt.Errorf("nats_module.SubscribeWithSubject: not started")
+	}
+
+	sub, err := m.nc.Subscribe(subject, func(msg *nats.Msg) {
+		handler(msg.Subject, msg.Data)
+	})
+	if err != nil {
+		return fmt.Errorf("nats_module.SubscribeWithSubject %s: %w", subject, err)
+	}
+	m.subs = append(m.subs, sub)
+	return nil
+}
+
 // SubscribeDurable creates a durable JetStream push-subscribe consumer.
 // Late subscribers receive messages published before they connected (from sequence 1).
 func (m *NATSModule) SubscribeDurable(subject, consumerName string, handler func([]byte)) error {
