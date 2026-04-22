@@ -5,6 +5,12 @@ import (
 	"fmt"
 )
 
+// Version is set at build time via -ldflags
+// "-X github.com/GoCodeAlone/workflow-plugin-broker/internal.Version=X.Y.Z".
+// Default is a bare semver so plugin loaders that validate semver accept
+// unreleased dev builds; goreleaser overrides with the real release tag.
+var Version = "0.0.0"
+
 // Plugin wires together the NATSModule with the publish/subscribe steps.
 // A single Plugin instance is created per workflow-server process.
 type Plugin struct {

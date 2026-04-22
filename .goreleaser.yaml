@@ -5,6 +5,7 @@ project_name: workflow-plugin-broker
 before:
   hooks:
     - go mod tidy
+    - "sed -i.bak 's/\"version\": \".*\"/\"version\": \"{{ .Version }}\"/' plugin.json && rm -f plugin.json.bak"
 
 builds:
   - id: workflow-plugin-broker
@@ -20,7 +21,7 @@ builds:
       - amd64
       - arm64
     ldflags:
-      - -s -w -X main.version={{.Version}}
+      - -s -w -X main.version={{.Version}} -X github.com/GoCodeAlone/workflow-plugin-broker/internal.Version={{.Version}}
 
 archives:
   - id: workflow-plugin-broker
