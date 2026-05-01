@@ -1,0 +1,18 @@
+{
+  "name": "workflow-plugin-broker",
+  "version": "0.2.2",
+  "author": "GoCodeAlone",
+  "description": "NATS JetStream broker module for cross-instance message delivery in workflow pipelines",
+  "source": "github.com/GoCodeAlone/workflow-plugin-broker",
+  "type": "external",
+  "tier": "community",
+  "license": "MIT",
+  "minEngineVersion": "0.1.0",
+  "keywords": ["nats", "jetstream", "broker", "pubsub", "messaging"],
+  "homepage": "https://github.com/GoCodeAlone/workflow-plugin-broker",
+  "repository": "https://github.com/GoCodeAlone/workflow-plugin-broker",
+  "capabilities": {
+    "moduleTypes": ["broker.nats"],
+    "stepTypes": ["step.broker_publish", "step.broker_subscribe"]
+  }
+}
