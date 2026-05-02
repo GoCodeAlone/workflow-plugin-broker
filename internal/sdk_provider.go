@@ -50,7 +50,7 @@ func (p *BrokerProvider) StepTypes() []string {
 
 // CreateStep creates a step instance of the given type.
 // The step's broker connection is created lazily on first Execute call using
-// the config fields (url, stream, jetstream).
+// the config fields (url, stream).
 func (p *BrokerProvider) CreateStep(typeName, name string, config map[string]any) (sdk.StepInstance, error) {
 	switch typeName {
 	case "step.broker_publish":
@@ -69,7 +69,7 @@ func (p *BrokerProvider) ModuleSchemas() []sdk.ModuleSchemaData {
 			Type:        "broker.nats",
 			Label:       "NATS JetStream Broker",
 			Category:    "messaging",
-			Description: "Connects to a NATS server and optionally enables JetStream for durable message delivery across instances.",
+			Description: "Connects to a NATS server and uses JetStream for durable message delivery across instances.",
 			ConfigFields: []sdk.ConfigField{
 				{
 					Name:         "url",
@@ -83,13 +83,6 @@ func (p *BrokerProvider) ModuleSchemas() []sdk.ModuleSchemaData {
 					Type:         "string",
 					Description:  "JetStream stream name",
 					DefaultValue: "GAME_EVENTS",
-					Required:     true,
-				},
-				{
-					Name:         "jetstream",
-					Type:         "bool",
-					Description:  "Enable JetStream persistence for durable message delivery",
-					DefaultValue: "false",
 					Required:     false,
 				},
 			},
@@ -107,7 +100,7 @@ type brokerModuleInstance struct {
 // Init is a no-op; all initialisation happens in Start.
 func (m *brokerModuleInstance) Init() error { return nil }
 
-// Start connects to NATS and (if jetstream=true) ensures the stream exists.
+// Start connects to NATS and ensures the JetStream stream exists.
 func (m *brokerModuleInstance) Start(ctx context.Context) error {
 	return m.module.Start(ctx)
 }
@@ -120,7 +113,8 @@ func (m *brokerModuleInstance) Stop(ctx context.Context) error {
 // --- publishStepInstance ---
 
 // publishStepInstance implements sdk.StepInstance for step.broker_publish.
-// It creates an ephemeral NATSModule on first Execute using the provided config.
+// The static config from CreateStep is used as the base; runtime config and
+// current values are merged on top at Execute time.
 type publishStepInstance struct {
 	name   string
 	config map[string]any
@@ -128,23 +122,26 @@ type publishStepInstance struct {
 
 // Execute publishes a message to the broker topic.
 //
-// Config keys (from the step's static config):
+// Config keys (merged from static CreateStep config, runtime config, and current):
 //
 //	topic   (string, required) — NATS subject to publish to.
 //
-// Current/input keys (from the step's runtime input):
+// Current/input keys:
 //
 //	payload (string|map|any)  — message body; maps are JSON-encoded.
 func (s *publishStepInstance) Execute(
 	ctx context.Context,
-	triggerData map[string]any,
+	_ map[string]any,
 	_ map[string]map[string]any,
 	current map[string]any,
 	_ map[string]any,
 	config map[string]any,
 ) (*sdk.StepResult, error) {
-	// Merge config (static) and current (dynamic) into params for the underlying step.
-	params := make(map[string]any, len(config)+len(current))
+	// Merge static config, runtime config, and current into params.
+	params := make(map[string]any, len(s.config)+len(config)+len(current))
+	for k, v := range s.config {
+		params[k] = v
+	}
 	for k, v := range config {
 		params[k] = v
 	}
@@ -152,7 +149,13 @@ func (s *publishStepInstance) Execute(
 		params[k] = v
 	}
 
-	mod := NewNATSModule(s.name, config)
+	// Validate required params before establishing any network connection.
+	topic, _ := params["topic"].(string)
+	if topic == "" {
+		return nil, fmt.Errorf("step.broker_publish: topic is required")
+	}
+
+	mod := NewNATSModule(s.name, params)
 	if err := mod.Start(ctx); err != nil {
 		return nil, fmt.Errorf("step.broker_publish: connect broker: %w", err)
 	}
@@ -169,16 +172,18 @@ func (s *publishStepInstance) Execute(
 // --- subscribeStepInstance ---
 
 // subscribeStepInstance implements sdk.StepInstance for step.broker_subscribe.
-// It creates a durable JetStream subscription and returns immediately; the host
-// engine drives message processing via the configured pipeline trigger.
+// The static config from CreateStep is used as the base; runtime config and
+// current values are merged on top at Execute time.
+// Execute blocks until the first message arrives or the context is cancelled.
 type subscribeStepInstance struct {
 	name   string
 	config map[string]any
 }
 
-// Execute sets up a durable JetStream subscription.
+// Execute sets up a durable JetStream subscription and blocks until one message
+// is received or the context is cancelled.
 //
-// Config keys (merged from static config and runtime current):
+// Config keys (merged from static CreateStep config, runtime config, and current):
 //
 //	topic         (string, required) — NATS subject filter.
 //	consumer_name (string, required) — durable consumer name for JetStream replay.
@@ -190,8 +195,11 @@ func (s *subscribeStepInstance) Execute(
 	_ map[string]any,
 	config map[string]any,
 ) (*sdk.StepResult, error) {
-	// Merge config (static) and current (dynamic) into params.
-	params := make(map[string]any, len(config)+len(current))
+	// Merge static config, runtime config, and current into params.
+	params := make(map[string]any, len(s.config)+len(config)+len(current))
+	for k, v := range s.config {
+		params[k] = v
+	}
 	for k, v := range config {
 		params[k] = v
 	}
@@ -199,6 +207,7 @@ func (s *subscribeStepInstance) Execute(
 		params[k] = v
 	}
 
+	// Validate required params before establishing any network connection.
 	topic, _ := params["topic"].(string)
 	if topic == "" {
 		return nil, fmt.Errorf("step.broker_subscribe: topic is required")
@@ -208,7 +217,7 @@ func (s *subscribeStepInstance) Execute(
 		return nil, fmt.Errorf("step.broker_subscribe: consumer_name is required")
 	}
 
-	mod := NewNATSModule(s.name, config)
+	mod := NewNATSModule(s.name, params)
 	if err := mod.Start(ctx); err != nil {
 		return nil, fmt.Errorf("step.broker_subscribe: connect broker: %w", err)
 	}
@@ -224,7 +233,7 @@ func (s *subscribeStepInstance) Execute(
 		return nil, fmt.Errorf("step.broker_subscribe: %w", err)
 	}
 
-	// Wait for the first message or context cancellation.
+	// Block until the first message arrives or the context is cancelled.
 	var payload map[string]any
 	select {
 	case data := <-received:

@@ -14,5 +14,32 @@
   "capabilities": {
     "moduleTypes": ["broker.nats"],
     "stepTypes": ["step.broker_publish", "step.broker_subscribe"]
-  }
+  },
+  "contracts": [
+    {"kind": "module", "type": "broker.nats",           "mode": "strict"},
+    {"kind": "step",   "type": "step.broker_publish",   "mode": "strict"},
+    {"kind": "step",   "type": "step.broker_subscribe",  "mode": "strict"}
+  ],
+  "downloads": [
+    {
+      "os": "linux",
+      "arch": "amd64",
+      "url": "https://github.com/GoCodeAlone/workflow-plugin-broker/releases/download/v0.2.2/workflow-plugin-broker_linux_amd64.tar.gz"
+    },
+    {
+      "os": "linux",
+      "arch": "arm64",
+      "url": "https://github.com/GoCodeAlone/workflow-plugin-broker/releases/download/v0.2.2/workflow-plugin-broker_linux_arm64.tar.gz"
+    },
+    {
+      "os": "darwin",
+      "arch": "amd64",
+      "url": "https://github.com/GoCodeAlone/workflow-plugin-broker/releases/download/v0.2.2/workflow-plugin-broker_darwin_amd64.tar.gz"
+    },
+    {
+      "os": "darwin",
+      "arch": "arm64",
+      "url": "https://github.com/GoCodeAlone/workflow-plugin-broker/releases/download/v0.2.2/workflow-plugin-broker_darwin_arm64.tar.gz"
+    }
+  ]
 }

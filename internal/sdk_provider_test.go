@@ -1,6 +1,7 @@
 package internal_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/GoCodeAlone/workflow-plugin-broker/internal"
@@ -132,6 +133,75 @@ func TestBrokerProvider_ModuleSchemas(t *testing.T) {
 	}
 	if !found {
 		t.Error("ModuleSchemas: schema for broker.nats not found")
+	}
+}
+
+// TestBrokerProvider_ModuleSchemas_NoJetstreamField verifies that the schema
+// does not advertise the defunct jetstream flag (the module always uses JetStream).
+func TestBrokerProvider_ModuleSchemas_NoJetstreamField(t *testing.T) {
+	p := &internal.BrokerProvider{}
+	for _, s := range p.ModuleSchemas() {
+		if s.Type != "broker.nats" {
+			continue
+		}
+		for _, f := range s.ConfigFields {
+			if f.Name == "jetstream" {
+				t.Error("broker.nats schema must not advertise the defunct jetstream field")
+			}
+		}
+	}
+}
+
+// executeStep is a test helper that calls inst.Execute with nil for all
+// positional arguments except config, keeping call sites concise.
+func executeStep(t *testing.T, inst sdk.StepInstance, config map[string]any) error {
+	t.Helper()
+	_, err := inst.Execute(context.Background(), nil, nil, nil, nil, config)
+	return err
+}
+
+// TestBrokerProvider_PublishStep_MissingTopic verifies that Execute returns an
+// error when the topic is absent, without attempting a network connection.
+func TestBrokerProvider_PublishStep_MissingTopic(t *testing.T) {
+	p := &internal.BrokerProvider{}
+	inst, err := p.CreateStep("step.broker_publish", "pub", map[string]any{
+		"url": "nats://localhost:4222",
+	})
+	if err != nil {
+		t.Fatalf("CreateStep: %v", err)
+	}
+	if err := executeStep(t, inst, map[string]any{}); err == nil {
+		t.Error("expected error when topic is missing")
+	}
+}
+
+// TestBrokerProvider_SubscribeStep_MissingTopic verifies that Execute returns an
+// error when the topic is absent, without attempting a network connection.
+func TestBrokerProvider_SubscribeStep_MissingTopic(t *testing.T) {
+	p := &internal.BrokerProvider{}
+	inst, err := p.CreateStep("step.broker_subscribe", "sub", map[string]any{
+		"url": "nats://localhost:4222",
+	})
+	if err != nil {
+		t.Fatalf("CreateStep: %v", err)
+	}
+	if err := executeStep(t, inst, map[string]any{"consumer_name": "c1"}); err == nil {
+		t.Error("expected error when topic is missing")
+	}
+}
+
+// TestBrokerProvider_SubscribeStep_MissingConsumerName verifies that Execute
+// returns an error when consumer_name is absent, without attempting a network connection.
+func TestBrokerProvider_SubscribeStep_MissingConsumerName(t *testing.T) {
+	p := &internal.BrokerProvider{}
+	inst, err := p.CreateStep("step.broker_subscribe", "sub", map[string]any{
+		"url": "nats://localhost:4222",
+	})
+	if err != nil {
+		t.Fatalf("CreateStep: %v", err)
+	}
+	if err := executeStep(t, inst, map[string]any{"topic": "events.>"}); err == nil {
+		t.Error("expected error when consumer_name is missing")
 	}
 }
 
