@@ -90,6 +90,23 @@ func (p *BrokerProvider) ModuleSchemas() []sdk.ModuleSchemaData {
 	}
 }
 
+// mergeConfigs merges multiple config maps into a single flat map.
+// Later maps take precedence over earlier ones, so the caller should pass
+// lowest-priority (static) maps first and highest-priority (current/runtime) last.
+func mergeConfigs(maps ...map[string]any) map[string]any {
+	total := 0
+	for _, m := range maps {
+		total += len(m)
+	}
+	out := make(map[string]any, total)
+	for _, m := range maps {
+		for k, v := range m {
+			out[k] = v
+		}
+	}
+	return out
+}
+
 // --- brokerModuleInstance ---
 
 // brokerModuleInstance wraps NATSModule and implements sdk.ModuleInstance.
@@ -138,16 +155,8 @@ func (s *publishStepInstance) Execute(
 	config map[string]any,
 ) (*sdk.StepResult, error) {
 	// Merge static config, runtime config, and current into params.
-	params := make(map[string]any, len(s.config)+len(config)+len(current))
-	for k, v := range s.config {
-		params[k] = v
-	}
-	for k, v := range config {
-		params[k] = v
-	}
-	for k, v := range current {
-		params[k] = v
-	}
+	// Later maps take precedence: s.config < config < current.
+	params := mergeConfigs(s.config, config, current)
 
 	// Validate required params before establishing any network connection.
 	topic, _ := params["topic"].(string)
@@ -174,14 +183,17 @@ func (s *publishStepInstance) Execute(
 // subscribeStepInstance implements sdk.StepInstance for step.broker_subscribe.
 // The static config from CreateStep is used as the base; runtime config and
 // current values are merged on top at Execute time.
-// Execute blocks until the first message arrives or the context is cancelled.
+// Execute uses a durable pull consumer to fetch exactly one message and blocks
+// until a message arrives or the context is cancelled.
 type subscribeStepInstance struct {
 	name   string
 	config map[string]any
 }
 
-// Execute sets up a durable JetStream subscription and blocks until one message
-// is received or the context is cancelled.
+// Execute sets up a durable JetStream pull consumer and fetches exactly one message,
+// blocking until a message is received or the context is cancelled.
+// Using a pull consumer ensures that only the single returned message is acknowledged
+// and no other in-flight messages are silently dropped or incorrectly ACKed.
 //
 // Config keys (merged from static CreateStep config, runtime config, and current):
 //
@@ -196,16 +208,8 @@ func (s *subscribeStepInstance) Execute(
 	config map[string]any,
 ) (*sdk.StepResult, error) {
 	// Merge static config, runtime config, and current into params.
-	params := make(map[string]any, len(s.config)+len(config)+len(current))
-	for k, v := range s.config {
-		params[k] = v
-	}
-	for k, v := range config {
-		params[k] = v
-	}
-	for k, v := range current {
-		params[k] = v
-	}
+	// Later maps take precedence: s.config < config < current.
+	params := mergeConfigs(s.config, config, current)
 
 	// Validate required params before establishing any network connection.
 	topic, _ := params["topic"].(string)
@@ -221,37 +225,27 @@ func (s *subscribeStepInstance) Execute(
 	if err := mod.Start(ctx); err != nil {
 		return nil, fmt.Errorf("step.broker_subscribe: connect broker: %w", err)
 	}
+	defer mod.Stop(ctx) //nolint:errcheck
 
-	received := make(chan []byte, 1)
-	if err := mod.SubscribeDurable(topic, consumerName, func(data []byte) {
-		select {
-		case received <- data:
-		default:
-		}
-	}); err != nil {
-		_ = mod.Stop(ctx)
+	// FetchOneDurable uses a pull consumer: exactly one message is fetched and
+	// acknowledged, preventing silent ACK of messages beyond the first.
+	data, err := mod.FetchOneDurable(ctx, topic, consumerName)
+	if err != nil {
 		return nil, fmt.Errorf("step.broker_subscribe: %w", err)
 	}
 
-	// Block until the first message arrives or the context is cancelled.
-	var payload map[string]any
-	select {
-	case data := <-received:
-		_ = mod.Stop(ctx)
-		if err := json.Unmarshal(data, &payload); err != nil {
-			// Return raw bytes as a string if not valid JSON.
-			payload = map[string]any{"data": string(data)}
-		}
-	case <-ctx.Done():
-		_ = mod.Stop(ctx)
-		return nil, ctx.Err()
+	// Unmarshal into any so all valid JSON shapes (object, array, string, number)
+	// are preserved; fall back to a raw string only when parsing truly fails.
+	var rawPayload any
+	if jsonErr := json.Unmarshal(data, &rawPayload); jsonErr != nil {
+		rawPayload = string(data)
 	}
 
 	return &sdk.StepResult{
 		Output: map[string]any{
 			"topic":    topic,
 			"consumer": consumerName,
-			"payload":  payload,
+			"payload":  rawPayload,
 		},
 	}, nil
 }

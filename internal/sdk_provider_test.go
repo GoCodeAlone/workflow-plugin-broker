@@ -3,6 +3,7 @@ package internal_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/GoCodeAlone/workflow-plugin-broker/internal"
 	"github.com/GoCodeAlone/workflow/plugin/external/sdk"
@@ -212,4 +213,125 @@ func TestBrokerProvider_ImplementsSDKInterfaces(t *testing.T) {
 	var _ sdk.ModuleProvider = (*internal.BrokerProvider)(nil)
 	var _ sdk.StepProvider = (*internal.BrokerProvider)(nil)
 	var _ sdk.SchemaProvider = (*internal.BrokerProvider)(nil)
+}
+
+// TestBrokerProvider_PublishSubscribe_Integration publishes via the SDK publish
+// step and then retrieves the message via the SDK subscribe step against an
+// embedded NATS server, exercising the full SDK provider wiring end-to-end.
+func TestBrokerProvider_PublishSubscribe_Integration(t *testing.T) {
+	srv := startEmbeddedNATS(t)
+
+	p := &internal.BrokerProvider{}
+	natsCfg := map[string]any{
+		"url":    srv.ClientURL(),
+		"stream": "INT_TEST",
+	}
+
+	// Publish a JSON object message.
+	pubInst, err := p.CreateStep("step.broker_publish", "pub", natsCfg)
+	if err != nil {
+		t.Fatalf("CreateStep publish: %v", err)
+	}
+	pubResult, err := pubInst.Execute(
+		context.Background(), nil, nil,
+		map[string]any{"payload": map[string]any{"hello": "world"}},
+		nil,
+		map[string]any{"topic": "INT_TEST.events"},
+	)
+	if err != nil {
+		t.Fatalf("publish Execute: %v", err)
+	}
+	if pubResult == nil || pubResult.Output["published"] != true {
+		t.Fatalf("publish step did not report success: %v", pubResult)
+	}
+
+	// Subscribe with a 5-second deadline so the test doesn't hang on failure.
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	subInst, err := p.CreateStep("step.broker_subscribe", "sub", natsCfg)
+	if err != nil {
+		t.Fatalf("CreateStep subscribe: %v", err)
+	}
+	subResult, err := subInst.Execute(
+		ctx, nil, nil, nil, nil,
+		map[string]any{
+			"topic":         "INT_TEST.events",
+			"consumer_name": "int-test-consumer",
+		},
+	)
+	if err != nil {
+		t.Fatalf("subscribe Execute: %v", err)
+	}
+	if subResult == nil || subResult.Output == nil {
+		t.Fatal("subscribe Execute returned nil result")
+	}
+	if subResult.Output["topic"] != "INT_TEST.events" {
+		t.Errorf("topic = %v, want INT_TEST.events", subResult.Output["topic"])
+	}
+	if subResult.Output["consumer"] != "int-test-consumer" {
+		t.Errorf("consumer = %v, want int-test-consumer", subResult.Output["consumer"])
+	}
+	// Payload should be the published JSON object.
+	payload, ok := subResult.Output["payload"].(map[string]any)
+	if !ok {
+		t.Fatalf("payload type = %T, want map[string]any", subResult.Output["payload"])
+	}
+	if payload["hello"] != "world" {
+		t.Errorf("payload[hello] = %v, want world", payload["hello"])
+	}
+}
+
+// TestBrokerProvider_SubscribeStep_NonObjectJSON verifies that a non-object JSON
+// payload (array) is preserved as-is in the output rather than wrapped.
+func TestBrokerProvider_SubscribeStep_NonObjectJSON(t *testing.T) {
+	srv := startEmbeddedNATS(t)
+
+	p := &internal.BrokerProvider{}
+	natsCfg := map[string]any{
+		"url":    srv.ClientURL(),
+		"stream": "ARRAY_TEST",
+	}
+
+	// Publish a JSON array (non-object JSON) as a native Go slice; the publish
+	// step JSON-encodes it, and the subscribe step must decode it as []any, not
+	// wrap it as map[string]any{"data": "..."}.
+	pubInst, err := p.CreateStep("step.broker_publish", "pub", natsCfg)
+	if err != nil {
+		t.Fatalf("CreateStep publish: %v", err)
+	}
+	if _, err := pubInst.Execute(
+		context.Background(), nil, nil,
+		map[string]any{"payload": []any{1, 2, 3}},
+		nil,
+		map[string]any{"topic": "ARRAY_TEST.items"},
+	); err != nil {
+		t.Fatalf("publish Execute: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	subInst, err := p.CreateStep("step.broker_subscribe", "sub", natsCfg)
+	if err != nil {
+		t.Fatalf("CreateStep subscribe: %v", err)
+	}
+	subResult, err := subInst.Execute(
+		ctx, nil, nil, nil, nil,
+		map[string]any{
+			"topic":         "ARRAY_TEST.items",
+			"consumer_name": "array-consumer",
+		},
+	)
+	if err != nil {
+		t.Fatalf("subscribe Execute: %v", err)
+	}
+	// Payload must be the decoded array, not map[string]any{"data": "[1,2,3]"}.
+	payload, ok := subResult.Output["payload"].([]any)
+	if !ok {
+		t.Fatalf("payload type = %T, want []any (JSON array)", subResult.Output["payload"])
+	}
+	if len(payload) != 3 {
+		t.Errorf("payload length = %d, want 3", len(payload))
+	}
 }
