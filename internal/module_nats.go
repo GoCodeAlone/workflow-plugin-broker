@@ -168,6 +168,43 @@ func (m *NATSModule) SubscribeWithSubject(subject string, handler func(subject s
 	return nil
 }
 
+// FetchOneDurable creates (or reuses) a durable pull consumer and fetches exactly
+// one message, blocking until a message is available or ctx is cancelled.
+// Only the single fetched message is acknowledged; no other messages are consumed
+// or lost, avoiding the ACK-race present in push-subscribe approaches.
+func (m *NATSModule) FetchOneDurable(ctx context.Context, subject, consumerName string) ([]byte, error) {
+	m.mu.RLock()
+	js := m.js
+	stream := m.stream
+	m.mu.RUnlock()
+
+	if js == nil {
+		return nil, fmt.Errorf("nats_module.FetchOneDurable: not started")
+	}
+
+	sub, err := js.PullSubscribe(subject, consumerName,
+		nats.BindStream(stream),
+		nats.AckExplicit(),
+		nats.DeliverAll(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("nats_module.FetchOneDurable %s/%s: %w", subject, consumerName, err)
+	}
+	defer sub.Unsubscribe() //nolint:errcheck // best-effort cleanup; any error does not affect the fetched message
+
+	msgs, err := sub.Fetch(1, nats.Context(ctx))
+	if err != nil {
+		return nil, fmt.Errorf("nats_module.FetchOneDurable fetch: %w", err)
+	}
+	if len(msgs) == 0 {
+		return nil, fmt.Errorf("nats_module.FetchOneDurable: no message received")
+	}
+	if err := msgs[0].Ack(); err != nil {
+		return nil, fmt.Errorf("nats_module.FetchOneDurable ack: %w", err)
+	}
+	return msgs[0].Data, nil
+}
+
 // SubscribeDurable creates a durable JetStream push-subscribe consumer.
 // Late subscribers receive messages published before they connected (from sequence 1).
 func (m *NATSModule) SubscribeDurable(subject, consumerName string, handler func([]byte)) error {

@@ -1,0 +1,45 @@
+{
+  "name": "workflow-plugin-broker",
+  "version": "0.2.2",
+  "author": "GoCodeAlone",
+  "description": "NATS JetStream broker module for cross-instance message delivery in workflow pipelines",
+  "source": "github.com/GoCodeAlone/workflow-plugin-broker",
+  "type": "external",
+  "tier": "community",
+  "license": "MIT",
+  "minEngineVersion": "0.1.0",
+  "keywords": ["nats", "jetstream", "broker", "pubsub", "messaging"],
+  "homepage": "https://github.com/GoCodeAlone/workflow-plugin-broker",
+  "repository": "https://github.com/GoCodeAlone/workflow-plugin-broker",
+  "capabilities": {
+    "moduleTypes": ["broker.nats"],
+    "stepTypes": ["step.broker_publish", "step.broker_subscribe"]
+  },
+  "contracts": [
+    {"kind": "module", "type": "broker.nats",           "mode": "strict"},
+    {"kind": "step",   "type": "step.broker_publish",   "mode": "strict"},
+    {"kind": "step",   "type": "step.broker_subscribe",  "mode": "strict"}
+  ],
+  "downloads": [
+    {
+      "os": "linux",
+      "arch": "amd64",
+      "url": "https://github.com/GoCodeAlone/workflow-plugin-broker/releases/download/v0.2.2/workflow-plugin-broker_linux_amd64.tar.gz"
+    },
+    {
+      "os": "linux",
+      "arch": "arm64",
+      "url": "https://github.com/GoCodeAlone/workflow-plugin-broker/releases/download/v0.2.2/workflow-plugin-broker_linux_arm64.tar.gz"
+    },
+    {
+      "os": "darwin",
+      "arch": "amd64",
+      "url": "https://github.com/GoCodeAlone/workflow-plugin-broker/releases/download/v0.2.2/workflow-plugin-broker_darwin_amd64.tar.gz"
+    },
+    {
+      "os": "darwin",
+      "arch": "arm64",
+      "url": "https://github.com/GoCodeAlone/workflow-plugin-broker/releases/download/v0.2.2/workflow-plugin-broker_darwin_arm64.tar.gz"
+    }
+  ]
+}
