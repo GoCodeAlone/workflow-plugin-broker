@@ -47,22 +47,22 @@
         {
             "os": "linux",
             "arch": "amd64",
-            "url": "https://github.com/GoCodeAlone/workflow-plugin-broker/releases/download/v0.2.2/workflow-plugin-broker_linux_amd64.tar.gz"
+            "url": "https://github.com/GoCodeAlone/workflow-plugin-broker/releases/download/v0.2.3/workflow-plugin-broker_linux_amd64.tar.gz"
         },
         {
             "os": "linux",
             "arch": "arm64",
-            "url": "https://github.com/GoCodeAlone/workflow-plugin-broker/releases/download/v0.2.2/workflow-plugin-broker_linux_arm64.tar.gz"
+            "url": "https://github.com/GoCodeAlone/workflow-plugin-broker/releases/download/v0.2.3/workflow-plugin-broker_linux_arm64.tar.gz"
         },
         {
             "os": "darwin",
             "arch": "amd64",
-            "url": "https://github.com/GoCodeAlone/workflow-plugin-broker/releases/download/v0.2.2/workflow-plugin-broker_darwin_amd64.tar.gz"
+            "url": "https://github.com/GoCodeAlone/workflow-plugin-broker/releases/download/v0.2.3/workflow-plugin-broker_darwin_amd64.tar.gz"
         },
         {
             "os": "darwin",
             "arch": "arm64",
-            "url": "https://github.com/GoCodeAlone/workflow-plugin-broker/releases/download/v0.2.2/workflow-plugin-broker_darwin_arm64.tar.gz"
+            "url": "https://github.com/GoCodeAlone/workflow-plugin-broker/releases/download/v0.2.3/workflow-plugin-broker_darwin_arm64.tar.gz"
         }
     ]
 }
