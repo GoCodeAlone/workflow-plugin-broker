@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package workflow.plugin.broker.v1;
+
+import "google/protobuf/struct.proto";
+
+option go_package = "github.com/GoCodeAlone/workflow-plugin-broker/gen;brokerv1";
+
+// NATSModuleConfig is the typed config for the broker.nats module.
+// Fields mirror the internal NATSModule config keys.
+message NATSModuleConfig {
+  // url is the NATS server URL (default: nats://localhost:4222).
+  string url = 1;
+  // stream is the JetStream stream name (default: GAME_EVENTS).
+  string stream = 2;
+  // jetstream enables JetStream persistence (default: false for plain pub/sub).
+  bool jetstream = 3;
+}
+
+// BrokerPublishConfig is the typed config for step.broker_publish.
+message BrokerPublishConfig {
+  // topic is the NATS subject to publish to.
+  string topic = 1;
+  // payload is the message body (string or JSON-encoded map).
+  string payload = 2;
+}
+
+// BrokerPublishInput carries optional runtime overrides for step.broker_publish.
+message BrokerPublishInput {
+  google.protobuf.Struct data = 1;
+}
+
+// BrokerPublishOutput is the result of step.broker_publish.
+message BrokerPublishOutput {
+  // topic is the NATS subject the message was published to.
+  string topic = 1;
+  // bytes is the number of bytes published.
+  int32 bytes = 2;
+  // published is true when the message was successfully delivered to the broker.
+  bool published = 3;
+}
+
+// BrokerSubscribeConfig is the typed config for step.broker_subscribe.
+message BrokerSubscribeConfig {
+  // topic is the NATS subject filter (wildcards supported).
+  string topic = 1;
+  // consumer_name is the durable consumer name for JetStream replay.
+  string consumer_name = 2;
+}
+
+// BrokerSubscribeInput carries optional runtime overrides for step.broker_subscribe.
+message BrokerSubscribeInput {
+  google.protobuf.Struct data = 1;
+}
+
+// BrokerSubscribeOutput is the result of step.broker_subscribe.
+message BrokerSubscribeOutput {
+  // topic is the NATS subject the message was received from.
+  string topic = 1;
+  // consumer is the durable consumer name used to fetch the message.
+  string consumer = 2;
+  // payload is the message body received from the broker.
+  google.protobuf.Struct payload = 3;
+}

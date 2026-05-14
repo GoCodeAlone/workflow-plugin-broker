@@ -26,23 +26,6 @@
             "step.broker_subscribe"
         ]
     },
-    "contracts": [
-        {
-            "kind": "module",
-            "type": "broker.nats",
-            "mode": "strict"
-        },
-        {
-            "kind": "step",
-            "type": "step.broker_publish",
-            "mode": "strict"
-        },
-        {
-            "kind": "step",
-            "type": "step.broker_subscribe",
-            "mode": "strict"
-        }
-    ],
     "downloads": [
         {
             "os": "linux",

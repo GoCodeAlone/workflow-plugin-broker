@@ -19,7 +19,7 @@ jobs:
       - run: go test -race ./...
       - run: go vet ./...
 
-  wfctl-strict-contracts:
+  strict-contracts:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -31,4 +31,6 @@ jobs:
       - name: Configure Git for private repos
         run: git config --global url."https://x-access-token:${{ secrets.RELEASES_TOKEN }}@github.com/".insteadOf "https://github.com/"
       - name: Validate strict plugin contracts
-        run: go run github.com/GoCodeAlone/workflow/cmd/wfctl@v0.20.1 plugin validate --file plugin.json --strict-contracts
+        run: |
+          WFCTL_VERSION=$(go list -m -f '{{.Version}}' github.com/GoCodeAlone/workflow)
+          go run github.com/GoCodeAlone/workflow/cmd/wfctl@${WFCTL_VERSION} plugin validate --file plugin.json --strict-contracts
