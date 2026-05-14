@@ -29,9 +29,7 @@ type NATSModuleConfig struct {
 	// url is the NATS server URL (default: nats://localhost:4222).
 	Url string `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
 	// stream is the JetStream stream name (default: GAME_EVENTS).
-	Stream string `protobuf:"bytes,2,opt,name=stream,proto3" json:"stream,omitempty"`
-	// jetstream enables JetStream persistence (default: false for plain pub/sub).
-	Jetstream     bool `protobuf:"varint,3,opt,name=jetstream,proto3" json:"jetstream,omitempty"`
+	Stream        string `protobuf:"bytes,2,opt,name=stream,proto3" json:"stream,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -78,13 +76,6 @@ func (x *NATSModuleConfig) GetStream() string {
 		return x.Stream
 	}
 	return ""
-}
-
-func (x *NATSModuleConfig) GetJetstream() bool {
-	if x != nil {
-		return x.Jetstream
-	}
-	return false
 }
 
 // BrokerPublishConfig is the typed config for step.broker_publish.
@@ -419,11 +410,10 @@ var File_broker_proto protoreflect.FileDescriptor
 
 const file_broker_proto_rawDesc = "" +
 	"\n" +
-	"\fbroker.proto\x12\x19workflow.plugin.broker.v1\x1a\x1cgoogle/protobuf/struct.proto\"Z\n" +
+	"\fbroker.proto\x12\x19workflow.plugin.broker.v1\x1a\x1cgoogle/protobuf/struct.proto\"<\n" +
 	"\x10NATSModuleConfig\x12\x10\n" +
 	"\x03url\x18\x01 \x01(\tR\x03url\x12\x16\n" +
-	"\x06stream\x18\x02 \x01(\tR\x06stream\x12\x1c\n" +
-	"\tjetstream\x18\x03 \x01(\bR\tjetstream\"E\n" +
+	"\x06stream\x18\x02 \x01(\tR\x06stream\"E\n" +
 	"\x13BrokerPublishConfig\x12\x14\n" +
 	"\x05topic\x18\x01 \x01(\tR\x05topic\x12\x18\n" +
 	"\apayload\x18\x02 \x01(\tR\apayload\"A\n" +

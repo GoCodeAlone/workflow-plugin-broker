@@ -1,13 +1,14 @@
-package internal
+package internal_test
 
 import (
 	"testing"
 
+	"github.com/GoCodeAlone/workflow-plugin-broker/internal"
 	pb "github.com/GoCodeAlone/workflow/plugin/external/proto"
 )
 
 func TestContractRegistry_HasAllSurfaces(t *testing.T) {
-	p := &BrokerProvider{}
+	p := &internal.BrokerProvider{}
 	reg := p.ContractRegistry()
 
 	if reg == nil {
@@ -48,7 +49,7 @@ func TestContractRegistry_HasAllSurfaces(t *testing.T) {
 }
 
 func TestContractRegistry_FileDescriptorSetIncludesBrokerAndStruct(t *testing.T) {
-	p := &BrokerProvider{}
+	p := &internal.BrokerProvider{}
 	reg := p.ContractRegistry()
 
 	if reg.FileDescriptorSet == nil {
@@ -75,7 +76,7 @@ func TestContractRegistry_FileDescriptorSetIncludesBrokerAndStruct(t *testing.T)
 }
 
 func TestContractRegistry_AllContractsHaveConfigMessage(t *testing.T) {
-	p := &BrokerProvider{}
+	p := &internal.BrokerProvider{}
 	reg := p.ContractRegistry()
 
 	for i, c := range reg.Contracts {
@@ -86,7 +87,7 @@ func TestContractRegistry_AllContractsHaveConfigMessage(t *testing.T) {
 }
 
 func TestContractRegistry_StepContractsHaveInputAndOutput(t *testing.T) {
-	p := &BrokerProvider{}
+	p := &internal.BrokerProvider{}
 	reg := p.ContractRegistry()
 
 	for i, c := range reg.Contracts {

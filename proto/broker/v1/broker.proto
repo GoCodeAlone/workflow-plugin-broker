@@ -13,8 +13,6 @@ message NATSModuleConfig {
   string url = 1;
   // stream is the JetStream stream name (default: GAME_EVENTS).
   string stream = 2;
-  // jetstream enables JetStream persistence (default: false for plain pub/sub).
-  bool jetstream = 3;
 }
 
 // BrokerPublishConfig is the typed config for step.broker_publish.
