@@ -3,7 +3,7 @@ module github.com/GoCodeAlone/workflow-plugin-broker
 go 1.26.1
 
 require (
-	github.com/GoCodeAlone/workflow v0.62.0
+	github.com/GoCodeAlone/workflow v0.64.0
 	github.com/nats-io/nats-server/v2 v2.14.0
 	github.com/nats-io/nats.go v1.52.0
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
