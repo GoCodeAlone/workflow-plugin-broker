@@ -18,5 +18,5 @@ import (
 )
 
 func main() {
-	sdk.Serve(&internal.BrokerProvider{})
+	sdk.Serve(&internal.BrokerProvider{}, sdk.WithBuildVersion(sdk.ResolveBuildVersion(internal.Version)))
 }
