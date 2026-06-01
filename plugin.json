@@ -1,6 +1,6 @@
 {
     "name": "workflow-plugin-broker",
-    "version": "0.2.4",
+    "version": "0.0.0",
     "author": "GoCodeAlone",
     "description": "NATS JetStream broker module for cross-instance message delivery in workflow pipelines",
     "source": "github.com/GoCodeAlone/workflow-plugin-broker",
